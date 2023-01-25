@@ -1,6 +1,6 @@
 package com.polarbookshop.orderservice.order.domain;
 
-import com.polarbookshop.orderservice.order.persistence.DataConfig;
+import com.polarbookshop.orderservice.config.DataConfig;
 import org.junit.jupiter.api.Test;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
@@ -20,7 +20,7 @@ import org.springframework.test.context.DynamicPropertySource;
 class OrderRepositoryR2dbcTests {
 
     @Container
-    static PostgreSQLContainer<?> postgresql = new PostgreSQLContainer<>(DockerImageName.parse("postgres:13"));
+    static PostgreSQLContainer<?> postgresql = new PostgreSQLContainer<>(DockerImageName.parse("postgres:14.4"));
 
     @Autowired
     private OrderRepository orderRepository;
@@ -34,7 +34,7 @@ class OrderRepositoryR2dbcTests {
     }
 
     private static String r2dbcUrl() {
-        return String.format("r2dbc:postgresql://%s:%s/%s", postgresql.getContainerIpAddress(),
+        return String.format("r2dbc:postgresql://%s:%s/%s", postgresql.getHost(),
                 postgresql.getMappedPort(PostgreSQLContainer.POSTGRESQL_PORT), postgresql.getDatabaseName());
     }
 
@@ -47,9 +47,10 @@ class OrderRepositoryR2dbcTests {
 
     @Test
     void createRejectedOrder() {
-        Order rejectedOrder = new Order("1234567890", 3, OrderStatus.REJECTED);
+        var rejectedOrder = OrderService.buildRejectedOrder( "1234567890", 3);
         StepVerifier.create(orderRepository.save(rejectedOrder))
-                .expectNextMatches(order -> order.getStatus().equals(OrderStatus.REJECTED))
+                .expectNextMatches(order -> order.status().equals(OrderStatus.REJECTED))
                 .verifyComplete();
     }
+
 }

@@ -1,15 +1,15 @@
 package com.polarbookshop.catalogservice.domain;
 
-import java.util.Optional;
-
-import lombok.RequiredArgsConstructor;
-
 import org.springframework.stereotype.Service;
 
 @Service
-@RequiredArgsConstructor
 public class BookService {
+
     private final BookRepository bookRepository;
+
+    public BookService(BookRepository bookRepository) {
+        this.bookRepository = bookRepository;
+    }
 
     public Iterable<Book> viewBookList() {
         return bookRepository.findAll();
@@ -21,29 +21,32 @@ public class BookService {
     }
 
     public Book addBookToCatalog(Book book) {
-        if (bookRepository.existsByIsbn(book.getIsbn())) {
-            throw new BookAlreadyExistsException(book.getIsbn());
+        if (bookRepository.existsByIsbn(book.isbn())) {
+            throw new BookAlreadyExistsException(book.isbn());
         }
         return bookRepository.save(book);
     }
 
     public void removeBookFromCatalog(String isbn) {
-        if (!bookRepository.existsByIsbn(isbn)) {
-            throw new BookNotFoundException(isbn);
-        }
         bookRepository.deleteByIsbn(isbn);
     }
 
-    public Book editBookDetails(String isbn, Book book) {
-        Optional<Book> existingBook = bookRepository.findByIsbn(isbn);
-        if (existingBook.isEmpty()) {
-            return addBookToCatalog(book);
-        }
-        Book bookToUpdate = existingBook.get();
-        bookToUpdate.setTitle(book.getTitle());
-        bookToUpdate.setAuthor(book.getAuthor());
-        bookToUpdate.setPublishingYear(book.getPublishingYear());
-        bookToUpdate.setPrice(book.getPrice());
-        return bookRepository.save(bookToUpdate);
-    }
+	public Book editBookDetails(String isbn, Book book) {
+		return bookRepository.findByIsbn(isbn)
+				.map(existingBook -> {
+					var bookToUpdate = new Book(
+							existingBook.id(),
+							existingBook.isbn(),
+							book.title(),
+							book.author(),
+							book.price(),
+							book.publisher(),
+							existingBook.createdDate(),
+							existingBook.lastModifiedDate(),
+							existingBook.version());
+					return bookRepository.save(bookToUpdate);
+				})
+				.orElseGet(() -> addBookToCatalog(book));
+	}
+
 }

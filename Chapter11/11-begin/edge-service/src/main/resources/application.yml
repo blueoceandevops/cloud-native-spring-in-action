@@ -1,20 +1,23 @@
 server:
   port: 9000
   netty:
-    connection-timeout: 5s
+    connection-timeout: 2s
+    idle-timeout: 15s
   shutdown: graceful
 
 spring:
+  application:
+    name: edge-service
   lifecycle:
     timeout-per-shutdown-phase: 15s
   config:
     import: "optional:configserver:"
   cloud:
     config:
-      uri: "http://localhost:8888"
-      request-connect-timeout: 1000 # 1s
+      uri: http://localhost:8888
+      request-connect-timeout: 5000 # 5s
       request-read-timeout: 5000 # 5s
-      fail-fast: false
+      fail-fast: false # In production, set to true
       retry:
         max-attempts: 6
         initial-interval: 1000 # 1s
@@ -22,7 +25,7 @@ spring:
         multiplier: 1.1
     gateway:
       httpclient:
-        connect-timeout: 5000
+        connect-timeout: 2000 # 2s
         response-timeout: 5s
         pool:
           type: elastic
@@ -32,9 +35,10 @@ spring:
         - SaveSession
         - name: RequestRateLimiter
           args:
-            redis-rate-limiter.replenishRate: 10
-            redis-rate-limiter.burstCapacity: 20
-            redis-rate-limiter.requestedTokens: 1
+            redis-rate-limiter:
+              replenishRate: 10
+              burstCapacity: 20
+              requestedTokens: 1
         - name: Retry
           args:
             retries: 3
@@ -65,16 +69,28 @@ spring:
               args:
                 name: orderCircuitBreaker
   redis:
-    connect-timeout: 5s
+    connect-timeout: 2s
     host: localhost
     port: 6379
-    timeout: 500ms
-    password: admin
+    timeout: 1s
   session:
     store-type: redis
     timeout: 10m
     redis:
       namespace: polar:edge
+
+resilience4j:
+  circuitbreaker:
+    configs:
+      default:
+        slidingWindowSize: 20
+        permittedNumberOfCallsInHalfOpenState: 5
+        failureRateThreshold: 50
+        waitDurationInOpenState: 15000
+  timelimiter:
+    configs:
+      default:
+        timeoutDuration: 5s
 
 #logging:
 #  level:
